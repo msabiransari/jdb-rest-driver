@@ -1,0 +1,315 @@
+package org.jdbrest.driver;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.hc.client5.http.fluent.Content;
+import org.apache.hc.client5.http.fluent.Request;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.jdbrest.driver.model.Data;
+import org.jdbrest.driver.model.QueryStatement;
+
+import java.sql.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import static org.jdbrest.utils.JdbRestUtils.parseQuery;
+
+public class JdbRestStatement implements Statement {
+  private ObjectMapper mapper = new ObjectMapper();
+  private int fetchSize;
+
+  private JdbRestConnection connection;
+
+  private ResultSet resultSet;
+
+  public JdbRestStatement(Connection connection) {
+    this.connection = (JdbRestConnection) connection;
+  }
+
+  @Override
+  public ResultSet executeQuery(String sql) throws SQLException {
+    QueryStatement qs = parseQuery(sql);
+    try {
+      if(qs.getMethod().equalsIgnoreCase("get")) {
+        Content content = Request.get(
+            connection.getHttpUrl() +
+                (connection.getHttpUrl().endsWith("/") ? "" : "/") +
+                qs.getUrl()
+        ).execute().returnContent();
+      } else if(qs.getMethod().equalsIgnoreCase("post")) {
+        String body = mapper.writeValueAsString(qs.getParameters());
+        Content content = Request.post(
+            connection.getHttpUrl() +
+                (connection.getHttpUrl().endsWith("/") ? "" : "/") +
+                qs.getUrl()
+        )
+            .body(new StringEntity(body, ContentType.APPLICATION_JSON))
+            .execute().returnContent();
+        List<LinkedHashMap<String, Object>> results = mapper.readValue(content.asStream(), new TypeReference<>() {});
+        this.resultSet = new JdbRestResultSet(this, results);
+      }
+      return this.resultSet;
+    } catch (Exception e) {
+      System.err.println("Error while executing query");
+      throw new SQLException(e);
+    }
+  }
+
+  @Override
+  public int executeUpdate(String sql) throws SQLException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void close() throws SQLException {}
+
+  @Override
+  public int getMaxFieldSize() throws SQLException {
+    return 0;
+  }
+
+  @Override
+  public void setMaxFieldSize(int max) throws SQLException {}
+
+  @Override
+  public int getMaxRows() throws SQLException {
+    return 0;
+  }
+
+  @Override
+  public void setMaxRows(int max) throws SQLException {}
+
+  @Override
+  public void setEscapeProcessing(boolean enable) throws SQLException {}
+
+  @Override
+  public int getQueryTimeout() throws SQLException {
+    return 0;
+  }
+
+  @Override
+  public void setQueryTimeout(int seconds) throws SQLException {}
+
+  //TODO
+  @Override
+  public void cancel() throws SQLException {
+
+  }
+
+  @Override
+  public SQLWarning getWarnings() throws SQLException {
+    return null;
+  }
+
+  @Override
+  public void clearWarnings() throws SQLException {}
+
+  @Override
+  public void setCursorName(String name) throws SQLException {}
+
+  @Override
+  public boolean execute(String sql) throws SQLException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public ResultSet getResultSet() throws SQLException {
+    return this.resultSet;
+  }
+
+  @Override
+  public int getUpdateCount() throws SQLException {
+    return 0;
+  }
+
+  @Override
+  public boolean getMoreResults() throws SQLException {
+    return false;
+  }
+
+  @Override
+  public void setFetchDirection(int direction) throws SQLException {}
+
+  @Override
+  public int getFetchDirection() throws SQLException {
+    return 0;
+  }
+
+  @Override
+  public void setFetchSize(int rows) throws SQLException {
+    this.fetchSize = rows;
+  }
+
+  @Override
+  public int getFetchSize() throws SQLException {
+    return this.fetchSize;
+  }
+
+  @Override
+  public int getResultSetConcurrency() throws SQLException {
+    return 0;
+  }
+
+  @Override
+  public int getResultSetType() throws SQLException {
+    return ResultSet.TYPE_SCROLL_INSENSITIVE;
+  }
+
+  @Override
+  public void addBatch(String sql) throws SQLException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void clearBatch() throws SQLException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public int[] executeBatch() throws SQLException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Connection getConnection() throws SQLException {
+    return this.connection;
+  }
+
+  @Override
+  public boolean getMoreResults(int current) throws SQLException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public ResultSet getGeneratedKeys() throws SQLException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public int executeUpdate(String sql, int autoGeneratedKeys) throws SQLException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public int executeUpdate(String sql, int[] columnIndexes) throws SQLException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public int executeUpdate(String sql, String[] columnNames) throws SQLException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public boolean execute(String sql, int autoGeneratedKeys) throws SQLException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public boolean execute(String sql, int[] columnIndexes) throws SQLException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public boolean execute(String sql, String[] columnNames) throws SQLException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public int getResultSetHoldability() throws SQLException {
+    return 0;
+  }
+
+  @Override
+  public boolean isClosed() throws SQLException {
+    return true;
+  }
+
+  @Override
+  public void setPoolable(boolean poolable) throws SQLException {}
+
+  @Override
+  public boolean isPoolable() throws SQLException {
+    return false;
+  }
+
+  @Override
+  public void closeOnCompletion() throws SQLException {}
+
+  @Override
+  public boolean isCloseOnCompletion() throws SQLException {
+    return false;
+  }
+
+  @Override
+  public long getLargeUpdateCount() throws SQLException {
+    return Statement.super.getLargeUpdateCount();
+  }
+
+  @Override
+  public void setLargeMaxRows(long max) throws SQLException {
+    Statement.super.setLargeMaxRows(max);
+  }
+
+  @Override
+  public long getLargeMaxRows() throws SQLException {
+    return Statement.super.getLargeMaxRows();
+  }
+
+  @Override
+  public long[] executeLargeBatch() throws SQLException {
+    return Statement.super.executeLargeBatch();
+  }
+
+  @Override
+  public long executeLargeUpdate(String sql) throws SQLException {
+    return Statement.super.executeLargeUpdate(sql);
+  }
+
+  @Override
+  public long executeLargeUpdate(String sql, int autoGeneratedKeys) throws SQLException {
+    return Statement.super.executeLargeUpdate(sql, autoGeneratedKeys);
+  }
+
+  @Override
+  public long executeLargeUpdate(String sql, int[] columnIndexes) throws SQLException {
+    return Statement.super.executeLargeUpdate(sql, columnIndexes);
+  }
+
+  @Override
+  public long executeLargeUpdate(String sql, String[] columnNames) throws SQLException {
+    return Statement.super.executeLargeUpdate(sql, columnNames);
+  }
+
+  @Override
+  public String enquoteLiteral(String val) throws SQLException {
+    return Statement.super.enquoteLiteral(val);
+  }
+
+  @Override
+  public String enquoteIdentifier(String identifier, boolean alwaysQuote) throws SQLException {
+    return Statement.super.enquoteIdentifier(identifier, alwaysQuote);
+  }
+
+  @Override
+  public boolean isSimpleIdentifier(String identifier) throws SQLException {
+    return Statement.super.isSimpleIdentifier(identifier);
+  }
+
+  @Override
+  public String enquoteNCharLiteral(String val) throws SQLException {
+    return Statement.super.enquoteNCharLiteral(val);
+  }
+
+  @Override
+  public <T> T unwrap(Class<T> iface) throws SQLException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public boolean isWrapperFor(Class<?> iface) throws SQLException {
+    return false;
+  }
+}
